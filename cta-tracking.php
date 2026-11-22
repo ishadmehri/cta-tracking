@@ -3,7 +3,7 @@
  * Plugin Name:       CTA Tracking
  * Plugin URI:        https://github.com/ishadmehri/cta-tracking
  * Description:       شمارش کلیک دکمه‌های تماس و پیام‌رسان با سلکتور CSS، و داشبورد نمودار (میله‌ای، خطی، حرارتی).
- * Version:           0.2.1
+ * Version:           0.2.2
  * Requires at least: 6.4
  * Requires PHP:      7.4
  * Author:            Iman Shadmehri
@@ -17,7 +17,7 @@ namespace CtaTracking;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION    = '0.2.1';
+const VERSION    = '0.2.2';
 const DB_VERSION = 1;
 const CAP        = 'view_cta_reports';
 const FILE       = __FILE__;
@@ -61,6 +61,8 @@ add_action(
 
 add_action( 'cta_tracking_cleanup', array( Clicks::class, 'cleanup' ) );
 add_action( 'rest_api_init', array( Collector::class, 'register_routes' ) );
+add_action( 'wp_ajax_nopriv_cta_tracking_hit', array( Collector::class, 'ajax' ) );
+add_action( 'wp_ajax_cta_tracking_hit', array( Collector::class, 'ajax' ) );
 add_action( 'rest_api_init', array( Report::class, 'register_routes' ) );
 add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\\enqueue' );
 Admin::hooks();
@@ -78,7 +80,7 @@ function enqueue(): void {
 	if ( ! $config['ctas'] ) {
 		return;
 	}
-	$config['url']  = rest_url( 'cta-tracking/v1/hit' );
+	$config['url']  = admin_url( 'admin-ajax.php?action=cta_tracking_hit' );
 	$config['post'] = (int) get_queried_object_id();
 	wp_enqueue_script( 'cta-tracking', plugins_url( 'assets/tracker.js', FILE ), array(), VERSION, array( 'strategy' => 'defer', 'in_footer' => true ) );
 	wp_add_inline_script( 'cta-tracking', 'var ctaTrackingConfig=' . wp_json_encode( $config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ';', 'before' );

@@ -65,19 +65,29 @@ final class Collector {
 
 	public static function collect( \WP_REST_Request $request ): \WP_REST_Response {
 		// The REST API ignores the login cookie without a nonce, so the team is recognised from the cookie itself.
-		$logged_in = (bool) wp_validate_auth_cookie( '', 'logged_in' );
-		$row       = self::row(
-			$request->get_params(),
-			(string) $request->get_header( 'user_agent' ),
-			$logged_in,
-			Settings::by_key( 'ctas' ),
-			Settings::by_key( 'zones' )
-		);
-		if ( $row ) {
-			Clicks::insert( $row );
-		}
+		self::store( $request->get_params(), (string) $request->get_header( 'user_agent' ), (bool) wp_validate_auth_cookie( '', 'logged_in' ) );
 		$response = new \WP_REST_Response( null, 204 );
 		$response->header( 'Cache-Control', 'no-store' );
 		return $response;
+	}
+
+	/**
+	 * admin-ajax.php?action=cta_tracking_hit → 204. This is what the page script uses: some sites close the REST API
+	 * to guests (one client site answered every /wp-json/ request with 403); admin-ajax is open wherever a theme works.
+	 * The REST route stays for pages cached before 0.2.2.
+	 */
+	public static function ajax(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification -- public, cache-safe endpoint; every field is checked in row().
+		self::store( wp_unslash( $_POST ), (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ), is_user_logged_in() );
+		nocache_headers();
+		status_header( 204 );
+		exit;
+	}
+
+	private static function store( array $in, string $ua, bool $logged_in ): void {
+		$row = self::row( $in, $ua, $logged_in, Settings::by_key( 'ctas' ), Settings::by_key( 'zones' ) );
+		if ( $row ) {
+			Clicks::insert( $row );
+		}
 	}
 }
