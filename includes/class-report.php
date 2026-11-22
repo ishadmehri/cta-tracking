@@ -43,8 +43,8 @@ final class Report {
 	 */
 	public static function query( array $in ): array {
 		$q = array(
-			'x'    => isset( self::DIMS[ $in['x'] ?? '' ] ) ? $in['x'] : 'cta',
-			's'    => isset( self::DIMS[ $in['s'] ?? '' ] ) ? $in['s'] : '',
+			'x'    => is_string( $in['x'] ?? null ) && isset( self::DIMS[ $in['x'] ] ) ? $in['x'] : 'cta',
+			's'    => is_string( $in['s'] ?? null ) && isset( self::DIMS[ $in['s'] ] ) ? $in['s'] : '',
 			'days' => max( 1, min( self::MAX_DAYS, (int) ( $in['days'] ?? 30 ) ) ),
 			'all'  => ! empty( $in['all'] ),
 		);
@@ -53,7 +53,7 @@ final class Report {
 		}
 		foreach ( array_keys( self::FILTERS ) as $f ) {
 			$list    = is_array( $in[ $f ] ?? null ) ? $in[ $f ] : explode( ',', (string) ( $in[ $f ] ?? '' ) );
-			$q[ $f ] = array_values( array_filter( array_map( 'strval', array_map( 'trim', $list ) ), 'strlen' ) );
+			$q[ $f ] = array_values( array_filter( array_map( 'trim', array_map( 'strval', array_filter( $list, 'is_scalar' ) ) ), 'strlen' ) );
 		}
 		return $q;
 	}

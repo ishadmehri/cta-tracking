@@ -66,6 +66,19 @@ final class Clicks {
 		);
 	}
 
+	/** Clicks stored per minute at most, site-wide. Real sites stay far below; a script flooding the receiver stops here. */
+	public const MAX_PER_MINUTE = 120;
+
+	/**
+	 * True when MAX_PER_MINUTE clicks were stored in the last 60 seconds. Reads one row by primary key (ids grow with
+	 * time), so it needs no IP address, no transient and no extra write.
+	 */
+	public static function flooded(): bool {
+		global $wpdb;
+		$at = $wpdb->get_var( $wpdb->prepare( 'SELECT clicked_at FROM ' . self::table() . ' ORDER BY id DESC LIMIT 1 OFFSET %d', self::MAX_PER_MINUTE - 1 ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return $at && strtotime( $at . ' UTC' ) > time() - MINUTE_IN_SECONDS;
+	}
+
 	/** Daily: removes clicks older than the kept days. */
 	public static function cleanup(): void {
 		global $wpdb;
@@ -80,12 +93,19 @@ final class Clicks {
 		return $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . self::table() . ' ORDER BY id DESC LIMIT %d', $limit ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
-	/** Per CTA key: last click time (UTC) and clean clicks in the last 7 days. */
+	/**
+	 * Per CTA key: last click time (UTC) within HEALTH_DAYS and clean clicks in the last 7 days. The day range keeps
+	 * the query on the (day, cta) index instead of scanning a year of clicks on every visit to the screen.
+	 */
+	public const HEALTH_DAYS = 90;
+
 	public static function health(): array {
 		global $wpdb;
-		$since = ( new \DateTimeImmutable( 'now', wp_timezone() ) )->modify( '-6 days' )->format( 'Y-m-d' );
+		$today = new \DateTimeImmutable( 'now', wp_timezone() );
+		$since = $today->modify( '-6 days' )->format( 'Y-m-d' );
+		$from  = $today->modify( '-' . self::HEALTH_DAYS . ' days' )->format( 'Y-m-d' );
 		$rows  = $wpdb->get_results(
-			$wpdb->prepare( 'SELECT cta, MAX(clicked_at) AS last_at, SUM(day >= %s AND flags = 0) AS week FROM ' . self::table() . ' GROUP BY cta', $since ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->prepare( 'SELECT cta, MAX(clicked_at) AS last_at, SUM(day >= %s AND flags = 0) AS week FROM ' . self::table() . ' WHERE day >= %s GROUP BY cta', $since, $from ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			ARRAY_A
 		);
 		$out = array();

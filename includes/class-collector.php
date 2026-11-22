@@ -37,7 +37,14 @@ final class Collector {
 	 * @param array  $zones     Known zone keys as keys.
 	 */
 	public static function row( array $in, string $ua, bool $logged_in, array $ctas, array $zones ): ?array {
-		$cta = (string) ( $in['c'] ?? '' );
+		// Arrays (c[]=x) become '' rather than "Array" plus a PHP warning per request.
+		$in  = array_map(
+			static function ( $v ) {
+				return is_scalar( $v ) ? (string) $v : '';
+			},
+			$in
+		);
+		$cta = $in['c'] ?? '';
 		if ( ! isset( $ctas[ $cta ] ) ) {
 			return null;
 		}
@@ -78,7 +85,7 @@ final class Collector {
 	 */
 	public static function ajax(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification -- public, cache-safe endpoint; every field is checked in row().
-		self::store( wp_unslash( $_POST ), (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ), is_user_logged_in() );
+		self::store( wp_unslash( $_POST ), sanitize_text_field( wp_unslash( (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ) ) ), is_user_logged_in() );
 		nocache_headers();
 		status_header( 204 );
 		exit;
@@ -86,8 +93,13 @@ final class Collector {
 
 	private static function store( array $in, string $ua, bool $logged_in ): void {
 		$row = self::row( $in, $ua, $logged_in, Settings::by_key( 'ctas' ), Settings::by_key( 'zones' ) );
-		if ( $row ) {
-			Clicks::insert( $row );
+		if ( ! $row || Clicks::flooded() ) {
+			return;
 		}
+		// The page id comes from the visitor; keep it only for published content, so reports never name drafts.
+		if ( $row['post_id'] && 'publish' !== get_post_status( $row['post_id'] ) ) {
+			$row['post_id'] = 0;
+		}
+		Clicks::insert( $row );
 	}
 }

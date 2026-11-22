@@ -61,7 +61,13 @@ same( UA::UNTRUSTED | UA::WEBDRIVER, $row['flags'], 'client may only set its own
 same( UA::TEAM, Collector::row( array( 'c' => 'tel' ), $chrome, true, $known, $zones )['flags'], 'logged-in click is flagged' );
 same( UA::BOT, Collector::row( array( 'c' => 'tel' ), 'curl/8.0', false, $known, $zones )['flags'], 'robot is flagged' );
 
-// ---- Report::query / sql -----------------------------------------------------------------------------------------
+// Hostile shapes: arrays where strings belong must not warn or match.
+same( null, Collector::row( array( 'c' => array( 'tel' ) ), $chrome, false, $known, $zones ), 'array as CTA is refused' );
+same( '', Collector::row( array( 'c' => 'tel', 'z' => array( 'footer' ), 'x' => array( 1 ) ), $chrome, false, $known, $zones )['zone'], 'array as zone becomes empty' );
+
+// ---- Report::query / sql
+$q = Report::query( array( 'x' => array( 'cta' ), 's' => array( 'zone' ), 'ctas' => array( 'tel', array( 'x' ), ' bale ' ) ) );
+same( array( 'cta', '', array( 'tel', 'bale' ) ), array( $q['x'], $q['s'], $q['ctas'] ), 'arrays in a report request are ignored, not fatal' );
 $q = Report::query( array( 'x' => 'x; DROP TABLE', 's' => 'cta', 'days' => '9999', 'ctas' => 'tel, whatsapp,', 'zones' => array( 'footer' ) ) );
 same( 'cta', $q['x'], 'unknown x falls back' );
 same( '', $q['s'], 'series equal to x is dropped' );

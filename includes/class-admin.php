@@ -101,7 +101,7 @@ final class Admin {
 			printf(
 				'<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
 				esc_html( $cta['label'] ? $cta['label'] : $key ),
-				esc_html( $h ? self::when( $h['last_at'] ) : 'هرگز' ),
+				esc_html( $h ? self::when( $h['last_at'] ) : 'در ۹۰ روز اخیر نه' ),
 				esc_html( number_format_i18n( $week ) ),
 				0 === $week ? '<span class="cta-warn">هفت روز بدون کلیک؛ سلکتور را با <code>?cta_debug=1</code> روی سایت بررسی کنید.</span>' : ''
 			);

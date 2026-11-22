@@ -3,7 +3,7 @@
  * Plugin Name:       CTA Tracking
  * Plugin URI:        https://github.com/ishadmehri/cta-tracking
  * Description:       شمارش کلیک دکمه‌های تماس و پیام‌رسان با سلکتور CSS، و داشبورد نمودار (میله‌ای، خطی، حرارتی).
- * Version:           0.2.2
+ * Version:           0.2.3
  * Requires at least: 6.4
  * Requires PHP:      7.4
  * Author:            Iman Shadmehri
@@ -17,7 +17,7 @@ namespace CtaTracking;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION    = '0.2.2';
+const VERSION    = '0.2.3';
 const DB_VERSION = 1;
 const CAP        = 'view_cta_reports';
 const FILE       = __FILE__;
